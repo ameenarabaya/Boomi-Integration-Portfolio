@@ -75,7 +75,9 @@ for (var i = 0; i < dataContext.getDataCount(); i++) {
     dataContext.storeStream(newIs, props);
 }
 
-## Script-Based Discount Calculation
+
+
+   ## Script-Based Discount Calculation
 
 This script calculates the discount and final price based on a dynamic
 discount value stored in Boomi document properties.
