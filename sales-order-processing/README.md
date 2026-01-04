@@ -75,4 +75,57 @@ for (var i = 0; i < dataContext.getDataCount(); i++) {
     dataContext.storeStream(newIs, props);
 }
 
+## Script-Based Discount Calculation
+
+This script calculates the discount and final price based on a dynamic
+discount value stored in Boomi document properties.
+
+### Script Logic Overview
+- Reads the current total amount from the XML document
+- Retrieves the discount value from a dynamic document property
+- Calculates the total discount and final price
+- Stores calculated values as dynamic document properties
+- Outputs the updated document for further processing
+
+### Sample Script
+```javascript
+for (var i = 0; i < dataContext.getDataCount(); i++) {
+    var is = dataContext.getStream(i);
+    var props = dataContext.getProperties(i);
+
+    var scanner = new java.util.Scanner(is, "UTF-8").useDelimiter("\\A");
+    var xmlString = scanner.hasNext() ? scanner.next() : "";
+    scanner.close();
+
+    var factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+    var builder = factory.newDocumentBuilder();
+    var doc = builder.parse(new java.io.ByteArrayInputStream(xmlString.getBytes("UTF-8")));
+
+    var totalAmountElement = doc.getElementsByTagName("total_amount").item(0);
+    var currentTotal = parseFloat(totalAmountElement.getTextContent());
+
+    var discountProperty = props.getProperty("document.dynamic.userdefined.discount");
+    if (discountProperty == null) {
+        throw "Discount property 'document.dynamic.userdefined.discount' not found";
+    }
+
+    var discountRate = parseFloat(discountProperty);
+    var total_discount = currentTotal * discountRate;
+    var final_price = currentTotal - total_discount;
+
+    props.setProperty("document.dynamic.userdefined.total_discount", total_discount.toFixed(2));
+    props.setProperty("document.dynamic.userdefined.final_price", final_price.toFixed(2));
+
+    var transformer = javax.xml.transform.TransformerFactory.newInstance().newTransformer();
+    var writer = new java.io.StringWriter();
+    transformer.transform(
+        new javax.xml.transform.dom.DOMSource(doc),
+        new javax.xml.transform.stream.StreamResult(writer)
+    );
+
+    var newIs = new java.io.ByteArrayInputStream(writer.toString().getBytes("UTF-8"));
+    dataContext.storeStream(newIs, props);
+}
+
+
 
