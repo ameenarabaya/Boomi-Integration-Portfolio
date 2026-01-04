@@ -30,5 +30,49 @@ rules to calculate discounts based on the total order amount.
 - JSON / XML Profiles
 - Mail Connector
 
+### Sample Script
+```javascript
+load("nashorn:mozilla_compat.js");
+importClass(com.boomi.execution.ExecutionUtil);
+
+for (var i = 0; i < dataContext.getDataCount(); i++) {
+    var is = dataContext.getStream(i);
+    var props = dataContext.getProperties(i);
+
+    var scanner = new java.util.Scanner(is, "UTF-8").useDelimiter("\\A");
+    var xmlString = scanner.hasNext() ? scanner.next() : "";
+    scanner.close();
+
+    var factory = javax.xml.parsers.DocumentBuilderFactory.newInstance();
+    var builder = factory.newDocumentBuilder();
+    var doc = builder.parse(new java.io.ByteArrayInputStream(xmlString.getBytes("UTF-8")));
+
+    var items = doc.getElementsByTagName('item');
+    var total = 0;
+
+    for (var j = 0; j < items.length; j++) {
+        var currentItem = items.item(j);
+        var quantity = parseFloat(currentItem.getElementsByTagName('quantity').item(0).textContent);
+        var price = parseFloat(currentItem.getElementsByTagName('price_per_unit').item(0).textContent);
+        total += quantity * price;
+    }
+
+    var rootElement = doc.getDocumentElement();
+    var totalElement = doc.createElement('total_amount');
+    totalElement.textContent = total.toFixed(2);
+    rootElement.appendChild(totalElement);
+
+    props.setProperty("document.dynamic.userdefined.total_amount", total.toFixed(2));
+
+    var transformer = javax.xml.transform.TransformerFactory.newInstance().newTransformer();
+    var writer = new java.io.StringWriter();
+    transformer.transform(
+        new javax.xml.transform.dom.DOMSource(doc),
+        new javax.xml.transform.stream.StreamResult(writer)
+    );
+
+    var newIs = new java.io.ByteArrayInputStream(writer.toString().getBytes("UTF-8"));
+    dataContext.storeStream(newIs, props);
+}
 
 
